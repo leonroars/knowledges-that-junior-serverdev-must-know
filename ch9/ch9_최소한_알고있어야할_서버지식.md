@@ -596,3 +596,96 @@ if [ -f ~/.bashrc ]; then
     . ~/.bashrc
 fi
 ```
+
+## IX. 네트워크 정보 확인
+
+### 1.`ifconfig` : IP 정보 확인하기
+
+`ifconfig` 는 네트워크 인터페이스 별 IP 주소를 비롯한 정보를 출력한다.
+
+```console
+$ ifconfig
+eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+      inet 172.19.187.60  netmask 255.255.240.0  broadcast 172.19.191.255
+      inet6 fe80::215:5dff:fec3:f66b  prefixlen 64  scopeid 0x20<link>
+      ether 00:15:5d:c3:f6:6b  txqueuelen 1000  (Ethernet)
+      RX packets 85679  bytes 37160326 (37.1 MB)
+      TX packets 12424  bytes 922029 (922.0 KB)
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+    inet 127.0.0.1  netmask 255.0.0.0
+    inet6 ::1  prefixlen 128  scopeid 0x10<host>
+    RX packets 308  bytes 34462 (34.4 KB)
+    TX packets 308  bytes 34462 (34.4 KB)
+```
+
+위의 예시에서 주요한 정보를 몇 가지 짚어보자면 다음과 같다.
+- `eth0`는 일반적인 네트워크 인터페이스, `lo`는 로컬 루프백 인터페이스이다. (127.0.0.1 을 보면 바로 알 수 있다.)
+- 이외 IPv4는 `inet`, IPv6 주소는 inet6` 항목으로 표기되어 있다.
+- `ether`는 MAC 주소를 나타낸다.
+
+ ### 2. `nc` : 연결 확인하기
+`nc` 명령어를 이용하면 특정 네트워크 위치오의 연결 상태를 확인할 수 있다.
+- `-z` 옵션 : 데이터 전송 없이 특정 포트의 개폐 여부만 확인
+- `-v` 옵션 : 추가 정보 출력. *해당 옵션 사용하지 않을 경우, 성공 시에도 메세지 출력이 되지 않으므로 사용하는 편이 속이 편하다.*
+
+예를 들어 443 포트로의 연결 상태를 확인하는 상황을 가정해보자.
+```console
+$ nc -z -v www.daum.net 443
+Ncat: Version 7.92 ( https://nmap.org/ncat )
+Ncat: Connected to 211.249.220.24:443.
+Ncat: 0 bytes sent, 0 bytes received in 0.07 seconds.
+```
+
+UDP 포트가 열려있는지 확인할 때에서 `nc` 명령어를 사용할 수 있다. 이때는 `-u` 옵션을 사용한다.
+
+```console
+$ nc -z -u -v localhost 6100
+Ncat: Version 7.50 ( https://nmap.org/ncat )
+Ncat: Connected to ::1:6100.
+Ncat: UDP packet sent successfully
+Ncat: 1 bytes sent, 0 bytes received in 2.01 seconds.
+```
+
+> **`curl` : 외부 API 호출 결과 확인해보자!**
+> - 외부 API 호출 결과를 확인하고자 할 때에는 `curl` 혹은 `wget` 을 사용한다.
+> - 쉽게 HTTP 요청을 보내고 응답을 확인할 수 있다.
+
+특정 포트를 사용하는 서버를 구동할 수도 있다.
+
+이를 활용한다면, 실제 서버 프로세스를 구동 전, 두 노드 간에 통신이 제대로 동작하는지 확인 가능하다.
+
+```console
+$ nc -l -v -p 1234
+Ncat: Version 7.50 ( https://nmap.org/ncat )
+Ncat: Listening on :::1234
+Ncat: Listening on 0.0.0.0:1234
+```
+- **`-l`**은 리스닝 모드, 즉 서버 모드를 뜻한다.
+- **`-p`**는 클라이언트 요청을 수신할 포트를 의미한다.
+- 참고로 클라이언트가 연결하면 nc 프로그램이 종료되므로 연결 확인이 필요할 때마다 실행해야 한다.
+
+### 3. `netstat` : 포트 사용 확인
+
+서버 프로세스가 돌아가고 있음에도, 해당 포트로 연결이 안된다면?
+
+실제로 해당 포트가 LISTEN 상태인지 확인할 필요가 있다.
+
+이럴 때 `netstat` 을 사용할 수 있다.
+
+다음 netstat 명령어를 사용하면 현재 서버에서 열려 있는 서버 포트를 확인할 수 있다.
+
+```console
+$ netstat -lptn
+Proto Recv-Q Send-Q Local Address    Foreign Address    State    PID/Program name
+tcp   0      0      127.0.0.1:25     0.0.0.0:*         LISTEN   2894/master
+tcp   0      0      127.0.0.1:199    0.0.0.0:*         LISTEN   2243/snmpd
+tcp   0      0      0.0.0.0:6379     0.0.0.0:*         LISTEN   4317/redis-server
+...
+```
+
+- `-l` : 리스닝 서버 소켓 출력
+- `-p` : 해당 소켓 사용하는 PID/프로그램 이름 출력
+- `-u` : UDP 소켓 출력
+- `-t` : TCP 소켓 출력
+- `-n` : 포트 및 주소를 숫자로 출력.
