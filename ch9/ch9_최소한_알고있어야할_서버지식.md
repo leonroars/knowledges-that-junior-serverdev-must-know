@@ -452,4 +452,16 @@ $ lsof -p 프로세스ID
 $ lsof -p 프로세스ID | wc -l
 ```
 
+## VI. 시간 맞추기
+- 서버들이 바라보는 시간들 간의 차이를 최소화하자.
+- 서버 구성 체크리스트에 '서버 시간 동기화'를 추가해서라도 반드시 챙기자
+- 틀어짐은 필연이다. 이를 최소화 하기 위해선 `chrony` 혹은 `ntp` 같은 서비스를 사용할 수 있다.
 
+> **ntp(Network Time Protocl) & `chrony`**
+> - 서로 독립된 컴퓨터 시스템 간의 시간을 동기화 하기 위해 고안된 프로토콜
+> - 일반적으로 client-server 형태로 묘사되지만, 서로가 서로의 시간대 보정의 기준이 된다는 점에서 peer-to-peer 구조로 바라볼 수도 있다.
+> - 통상, 각 컴퓨터 시스템의 123 포트를 이용한 UDP 통신으로 Unix Timestamp 를 찍어 보내고 확인한 후, clock-synchronization algorithm 과 같은 시간 동기화 알고리즘을 적용하여 동기화한다.
+> - 하지만 역시나 프로토콜이고 실제 구현에 따라 방식이 달라질 수 있다. 가령, 하나의 기준이 되는 시스템을 지정한 후, broadcasting 을 통해 동기화를 하는 방법도 있다.
+> - 대표적인 구현체가 바로 `chrony` 이다.
+> 
+> 출처 : <small>(NTP)[https://en.wikipedia.org/wiki/Network_Time_Protocol]</small>
