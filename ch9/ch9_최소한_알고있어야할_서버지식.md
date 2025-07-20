@@ -524,3 +524,75 @@ $ crontab -l
 
 > `at` : 일회성 작업 예약 등록하기.
 > - `at` 명령어를 이용하면 일회성 작업 예약 등록이 가능하다.
+
+## VIII. alias - 명령어 별칭 설정
+
+서버를 운영하면 자주 사용하는 명령어가 생긴다.
+
+해당 명령어의 '별명'을 만들어두고 해당 별명을 입력하면 실행되도록 하면 어떨까?
+
+`alias` 가 바로 명령어-별칭 간 연결을 만들어주는 친구이다.
+
+그리고 이런 별칭을 만드는 방식은 크게 두 가지가 있다.
+> 1. 현재 세션에만 국한되는 별칭 저장하기
+> 2. 시스템 레벨에서의 설정으로 별칭을 저장하기
+
+#### 1. 현재 세션에만 국한되는 별칭 지정하기.
+```console
+$ alias cdweb='cd /var/www/html'
+```
+
+위 **alias** 명령어는 **cdweb** 별칭에 대해 `cd /var/www/html` 명령어를 대응한다. 
+
+```console
+$ cdweb
+$ pwd
+/var/www/html
+```
+
+해당 별칭 입력 후 `pwd` 를 이용해 현 위치를 확인해보면 실제로 이동을 했음을 알 수 있다.
+
+### 2. 시스템 레벨에서의 설정으로 별칭을 저장하기.
+
+매 실행 시마다 반복적으로 자주 사용되는 별칭이 있다면, 시스템 수준에서 이러한 별칭 관계를 지정해둘 수 있다.
+
+쉘의 구성 파일에 `alias`를 등록하는 것이다.
+
+```console
+# .bashrc
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+    . /etc/bashrc
+fi
+
+# alias
+alias cdweb='cd /var/www/html'
+```
+**alias** 명령어만 실행하면 현재 정의되어 있는 모든 별칭을 볼 수 있다.
+
+```console
+$ alias
+alias cdweb='cd /var/www/html'
+alias egrep='egrep --color=auto'
+alias fgrep='fgrep --color=auto'
+alias grep='grep --color=auto'
+alias l.='ls -d .* --color=auto'
+alias ll='ls -l --color=auto'
+alias ls='ls --color=auto'
+```
+
+
+> **.bash_profile 파일과 .bashrc 파일**  
+> **.bash_profile** 파일과 **.bashrc** 파일은 둘 다 bash 쉘에서 사용자 환경을 구성할 때 사용되는 설정 파일이다. 이 두 파일은 실행되는 시점과 용도가 다르다.
+>
+> 1. **.bash_profile** 파일은 사용자가 로그인할 때 한 번 실행된다. 보통 이 파일에는 PATH처럼 전체 세션에 필요한 환경 변수를 설정한다.
+>
+> 2. **.bashrc** 파일은 새로운 bash 쉘을 시작하거나 터미널 창을 열 때 실행된다. 주로 별칭과 같이 각 세션마다 적용할 설정을 이 파일에 저장한다.
+>
+> 3. **.bash_profile** 파일은 다음과 같이 **.bashrc** 파일을 실행하는 코드가 포함되어 있고, 로그인 시점에 bashrc 설정도 함께 적용된다.
+
+```console
+if [ -f ~/.bashrc ]; then
+    . ~/.bashrc
+fi
+```
