@@ -339,3 +339,117 @@ $ cp /dev/null out.log
 
 > **로그 로테이션(Log Rotation)**
 > 로그 파일의 개수를 정해두고(즉, 파일을 미리 생성해둔다.) 일정한 규칙에 따라 파일을 바꿔가며 로그를 기록하는 방식.
+
+
+## V. 파일 디스크립터 제한
+- 프로세스는 데이터 입출력이 필요할 때, OS로부터 *파일 디스크립터(File Descriptor)* 를 할당 받음.
+- 이때, OS 수준 혹은 프로세스 수준, 서비스 수준에 따라 각각 파일 디스크립터 개수가 제한되어 있다.
+- 모든 것을 파일의 개념으로 바라보는 UNIX 계열 시스템의 특징을 고려할 때, 할당 가능한 파일 디스크립터의 수는 곧 해당 사용자/프로세스/서비스가 동시에 열 수 있는 파일 또는 소켓의 수를 의미한다.
+- 따라서 실제로 운영하는 서비스라면, 트래픽의 수준에 따라 이를 변경해주어야할 필요가 있으므로 모니터링하고 설정을 변경하는 법을 숙지해야한다.
+- 만약 파일 디스크립터 제한에 도달하는 경우, `Too Many Open Files` 와 같은 오류를 만나게 된다!
+
+### 1. 사용자 수준의 파일 디스크립터 제한 확인 및 변경
+- `ulimit -a` 명령어를 이용하여 사용자의 파일 ㄹ디스크립터 개수 제한을 확인 가능`
+```console
+$ ulimit -a
+
+real-time non-blocking time (microseconds, -R) unlimited
+...
+open files                                (-n) 1024
+...
+```
+위의 출력문은 현재 터미널에 접속한 사용자가 생성한 프로세스의 파일 디스크립터 개수 제한이 1024개 라는 것을 보여준다.
+
+변경은 크게 두 가지 관점에서 이루어진다.
+- 1) 현 사용자 세션 내에서의 파일 디스크립터 제한 변경
+- 2) 사용자의 기본(Default) 파일 디스크립터 제한 변경
+ 
+> **1) 현 사용자 세션 내에서의 파일 디스크립터 제한 변경**
+- `ulimit -n 개수` 명령어를 사용하여 변경
+
+> **2) 사용자의 기본(Default) 파일 디스크립터 제한 변경**
+- `/etc/security/limits.conf` 파일 내의 해당 항목 수치 변경을 통해 가능하다.
+```console
+* soft nofile 1000
+* hard nofile 1000
+```
+예제는 다음과 같이 해석한다.
+- `*` : 모든 사용자에 대해,
+- `soft nofile 1000` : 기본적으로 1000개 제한,
+- `hard nofile 1000` : 기본을 초과할 경우 최대 1000개 제한
+
+### 2. 서비스 수준의 파일 디스크립터 제한 확인 및 변경
+
+서비스는 크게 두 가지로 구분해 볼 수 있다.
+- 1) `systemd`로 실행되는 서비스
+- 2) 사용자에 의해 실행되는 서비스
+
+> **1) `systemd`로 실행되는 서비스**
+
+확인은 `systemctl show` 명령어를 이용하여 가능하다.
+```console
+$ systemctl show -p DefaultLimitNOFILE
+DefaultLimitNOFILE=524888
+```
+
+이를 변경하고자 할 경우, `/etc/systemd/system.conf` 파일의 `DefaultLimitNOFILE` 값을 수정함으로써 이루어진다.
+
+수정 후엔 `systemctl daemon-reload` 명령어를 통해 설정을 반영해야한다!
+
+> **2) 사용자에 의해 실행되는 서비스**
+
+큰 메커니즘은 `systemd`로 실행되는 서비스 경우와 다르지 않다.
+
+어떤 서비스가 참조하는 설정 파일의 내용을 수정하는 것이다.
+
+개별 서비스의 설정 파일은 통상 `/etc/systemd/system` 디렉토리 혹은 `/usr/lib/systemd/system` 디렉토리에 위치한다.
+
+해당 설정 파일을 찾아 `LimitNOFILE` 설정을 추가한다.
+
+```console
+[Service]
+LimitNOFILE=1048576
+```
+
+### 3. 프로세스 수준의 파일 디스크립터 제한 확인 및 변경
+한 프로세스가 가질 수 있는 파일 디스크립터 수의 제한은 `sysctl fs.nr_open` 명령어를 사용하여 확인 가능하다.
+```console
+$ sysctl fs.nr_open
+fs.nr_open = 107374186
+```
+
+기본적으로 충분히 크게 설정되어 있기 때문에 변경하는 경우가 많지 않지만 변경할 경우 `/eetc/sysctl.conf` 파일의 `fs.nr_open` 설정을 변경한다.
+
+시스템 전체의 파일 디스크립터 개수 제한을 확인 및 변경 가능하다. `sysctl fs.file-max` 명령어를 통해 확인 가능하다.
+
+변경 또한 마찬가지로 `sysctl.conf` 파일의 `fs.file-max` 설정을 변경함으로써 가능하다.
+
+*`sysctl.conf` 수정 후엔 `sysctl -p` 명령어로 적용하는 것을 잊지 말자!*
+
+PID를 이용하여 특정 프로세스의 파일 디스크립터 제한 값도 조회 가능하다.
+
+```console
+$ cat /proc/[Target PID]/limits
+Limit            Soft Limit    Hard Limit    Units
+...
+Max open files   65535          65535        files
+```
+
+혹은 다음과 같이 `prlimit` 명령어를 통해서도 가능하다.
+```console
+$ prlimit --pid [target PID]
+RESOURCE    DESCRIPTION                  SOFT      HARD
+...
+NOFILE      max number of open files     65535     65535
+```
+
+실제 프로세스가 사용 중인 파일 디스크립터 수를 확인할 경우 `lsof` 명령어를 사용한다.
+
+'list of' 로 기억하니 쉽다.
+
+```console
+$ lsof -p 프로세스ID
+$ lsof -p 프로세스ID | wc -l
+```
+
+
